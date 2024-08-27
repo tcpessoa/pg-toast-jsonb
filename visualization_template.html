@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSONB Update Results Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            height: 400px;
+        }
+        .summary-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .summary-table {
+            width: 48%;
+        }
+        .summary-chart {
+            width: 48%;
+            height: 200px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JSONB Update Results</h1>
+        
+        <h2>Update Frequency Comparison</h2>
+        <div class="summary-container">
+            <div class="summary-table">
+                <table id="summaryTable">
+                    <thead>
+                        <tr>
+                            <th>JSONB Type</th>
+                            <th>Total Updates</th>
+                            <th>Updates per Second</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Summary rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="summary-chart">
+                <canvas id="updateFrequencyChart"></canvas>
+            </div>
+        </div>
+
+        <h2>Size Growth Comparison</h2>
+        <div class="chart-container">
+            <canvas id="sizeChart"></canvas>
+        </div>
+        
+        <h2>Detailed Data</h2>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>Update Count</th>
+                    <th>Large JSONB Total Size (MB)</th>
+                    <th>Large JSONB TOAST Size (MB)</th>
+                    <th>Small JSONB Total Size (MB)</th>
+                    <th>Small JSONB TOAST Size (MB)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table rows will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        const data = {{DATA_PLACEHOLDER}};
+        
+        const largeData = data.largeUpdates.sizes;
+        const smallData = data.smallUpdates.sizes;
+
+        // Update Frequency Summary
+        const largeUpdates = largeData[largeData.length - 1].updateCount;
+        const smallUpdates = smallData[smallData.length - 1].updateCount;
+        const testDuration = 60; // seconds
+
+        const summaryTableBody = document.querySelector('#summaryTable tbody');
+        summaryTableBody.innerHTML = `
+            <tr>
+                <td>Large JSONB</td>
+                <td>${largeUpdates}</td>
+                <td>${(largeUpdates / testDuration).toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td>Small JSONB</td>
+                <td>${smallUpdates}</td>
+                <td>${(smallUpdates / testDuration).toFixed(2)}</td>
+            </tr>
+        `;
+
+        // Update Frequency Chart
+        const ctxFrequency = document.getElementById('updateFrequencyChart').getContext('2d');
+        new Chart(ctxFrequency, {
+            type: 'bar',
+            data: {
+                labels: ['Large JSONB', 'Small JSONB'],
+                datasets: [{
+                    label: 'Updates per Second',
+                    data: [largeUpdates / testDuration, smallUpdates / testDuration],
+                    backgroundColor: ['rgba(255, 99, 132, 0.8)', 'rgba(75, 192, 192, 0.8)']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Updates per Second'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Size Growth Chart
+        const ctxSize = document.getElementById('sizeChart').getContext('2d');
+        new Chart(ctxSize, {
+            type: 'line',
+            data: {
+                labels: largeData.map(d => d.updateCount),
+                datasets: [
+                    {
+                        label: 'Large JSONB Total Size',
+                        data: largeData.map(d => d.large.total_size / 1024 / 1024),
+                        borderColor: 'rgb(255, 99, 132)',
+                        fill: false
+                    },
+                    {
+                        label: 'Large JSONB TOAST Size',
+                        data: largeData.map(d => d.large.toast_size / 1024 / 1024),
+                        borderColor: 'rgb(54, 162, 235)',
+                        fill: false
+                    },
+                    {
+                        label: 'Small JSONB Total Size',
+                        data: smallData.map(d => d.small.total_size / 1024 / 1024),
+                        borderColor: 'rgb(75, 192, 192)',
+                        fill: false
+                    },
+                    {
+                        label: 'Small JSONB TOAST Size',
+                        data: smallData.map(d => d.small.toast_size / 1024 / 1024),
+                        borderColor: 'rgb(153, 102, 255)',
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Number of Updates'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Size (MB)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Populate the detailed data table
+        const tableBody = document.querySelector('#dataTable tbody');
+        largeData.forEach((d, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${d.updateCount}</td>
+                <td>${(d.large.total_size / 1024 / 1024).toFixed(2)}</td>
+                <td>${(d.large.toast_size / 1024 / 1024).toFixed(2)}</td>
+                <td>${(smallData[index].small.total_size / 1024 / 1024).toFixed(2)}</td>
+                <td>${(smallData[index].small.toast_size / 1024 / 1024).toFixed(2)}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    </script>
+</body>
+</html>
