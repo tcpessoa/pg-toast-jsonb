@@ -102,9 +102,23 @@ async function getTableSizes() {
   };
 }
 
+interface TableSizes {
+  total_size: number;
+  main_size: number;
+  toast_size: number;
+}
+
+interface SizeEntry {
+  updateCount: number;
+  large: TableSizes;
+  small: TableSizes;
+}
+
 async function runTest(updateFn: () => Promise<void>, description: string) {
+  const TEST_DURATION = 60000; // 1 minute
+  console.log('TEST_DURATION:', TEST_DURATION);
   console.log(`Starting test: ${description}`);
-  const sizes = [];
+  const sizes: SizeEntry[] = [];
   const initialSizes = await getTableSizes();
   console.log('Initial sizes:', initialSizes);
   sizes.push({ updateCount: 0, ...initialSizes });
@@ -112,7 +126,7 @@ async function runTest(updateFn: () => Promise<void>, description: string) {
   let updateCount = 0;
   const startTime = Date.now();
 
-  while (Date.now() - startTime < 60000) { // Run for 1 minute
+  while (Date.now() - startTime < TEST_DURATION) {
     await updateFn();
     updateCount++;
 
