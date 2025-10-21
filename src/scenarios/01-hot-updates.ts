@@ -11,7 +11,8 @@ export async function run() {
   console.log("Testing small JSONB (~100 bytes)...");
   const smallTable = "hot_test_small";
   await resetTable(smallTable);
-  await sql`UPDATE ${smallTable} SET data = '${JSON.stringify(generateSmallJsonb())}'::jsonb WHERE id = 1`;
+  const smallData = JSON.stringify(generateSmallJsonb());
+  await sql.unsafe(`UPDATE ${smallTable} SET data = '${smallData}'::jsonb WHERE id = 1`);
 
   const statsBefore1 = await getTableStats(smallTable);
 

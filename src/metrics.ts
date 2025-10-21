@@ -49,7 +49,7 @@ export async function getToastSize(toastTableName: string): Promise<number> {
   if (!toastTableName) return 0;
 
   const result = await sql`
-    SELECT pg_total_relation_size(${toastTableName}::regclass) as size
+    SELECT pg_total_relation_size(${"pg_toast." + toastTableName}::regclass) as size
   ` as { size: string }[];
 
   return parseInt(result[0]?.size || "0");

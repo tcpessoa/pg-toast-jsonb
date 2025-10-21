@@ -1,16 +1,15 @@
 import { SQL } from "bun";
 
 const PORT = 5435 // to avoid conflict with default Postgres port 5432
-const connectionString = process.env.DATABASE_URL || `postgres://postgres:postgres@localhost:${PORT}/postgres`;
+const connectionString = process.env.DATABASE_URL || `postgres://testuser:testpass@localhost:${PORT}/jsonb_test`;
 const sql = new SQL(connectionString);
 
 export async function query<T = any>(text: string, params?: any[]): Promise<T[]> {
+  // Bun SQL uses tagged templates, so we need to use sql.unsafe for raw SQL strings
   if (params && params.length > 0) {
-    const paramPlaceholders = params.map((_, i) => `$${i + 1}`).join(", ");
-    const queryText = text.replace(/\$\d+/g, () => paramPlaceholders);
-    return await sql.query(queryText, params) as T[];
+    return await sql.unsafe(text, params) as T[];
   }
-  return await sql.query(text) as T[];
+  return await sql.unsafe(text) as T[];
 }
 
 export async function resetTable(tableName: string) {
@@ -22,7 +21,7 @@ export async function resetTable(tableName: string) {
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `;
-  await sql`INSERT INTO ${sql(tableName)} (data) VALUES ('{}'::jsonb)`;
+  await sql`INSERT INTO ${sql(tableName)} (data) VALUES ('{"updatedAt": ""}'::jsonb)`;
 }
 
 export async function disableAutovacuum(tableName: string) {
