@@ -24,3 +24,4 @@ bun install
 bun start
 ```
 
+It can take up to 5mins.
