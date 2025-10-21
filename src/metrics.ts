@@ -55,16 +55,6 @@ export async function getToastSize(toastTableName: string): Promise<number> {
   return parseInt(result[0]?.size || "0");
 }
 
-export function calculateHotRatio(stats: TableStats): number {
-  if (stats.n_tup_upd === 0) return 0;
-  return stats.n_tup_hot_upd / stats.n_tup_upd;
-}
-
-export function calculateBloatRatio(stats: TableStats): number {
-  if (stats.n_live_tup === 0) return 0;
-  return stats.n_dead_tup / stats.n_live_tup;
-}
-
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -75,14 +65,6 @@ export function formatBytes(bytes: number): string {
 
 export function formatNumber(num: number): string {
   return num.toLocaleString();
-}
-
-export async function getIndexSize(tableName: string, indexName: string): Promise<number> {
-  const result = await sql`
-    SELECT pg_relation_size(${indexName}::regclass) as size
-  ` as { size: string }[];
-
-  return parseInt(result[0]?.size || "0");
 }
 
 export async function getToastTableName(tableName: string): Promise<string | null> {
