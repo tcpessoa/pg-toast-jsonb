@@ -7,24 +7,24 @@ Tests demonstrate significant performance degradation and storage bloat when upd
 ## Key Findings
 
 ### TOAST Write Amplification (Scenario 1)
-- **Result**: Updating a 25-byte timestamp field causes 80.96 KB TOAST writes
-- **Write Amplification**: 3,316x
+- **Result**: Updating a 25-byte timestamp field causes ~80-360 KB TOAST writes (example run: 80.96 KB)
+- **Write Amplification**: 3,000-15,000x (example run: 3,316x)
 - **Implication**: Entire JSONB document is rewritten on any field update
 
 ### Autovacuum Fundamentally Ineffective for TOAST-Heavy Workloads (Scenario 2)
 
 **Workload**: ~100 updates/sec over 60 seconds (~6,000 total updates) on a single-row table with ~80KB JSONB
 
-**Bloat Results**:
-- **Final table size**: 1.87 GB
-- **Live data**: 354 KB (0.02%)
-- **Dead TOAST chunks**: 1.44 GB (77%)
-- **Free space**: 426 MB (23%)
-- **Bloat amplification**: 5,400x (1.87 GB / 354 KB)
-- **After VACUUM FULL**: 400 KB (99.98% space reclaimed)
+**Bloat Results** (example run):
+- **Final table size**: 1.87-2.2 GB (example: 1.87 GB)
+- **Live data**: ~350-400 KB (example: 354 KB, 0.02%)
+- **Dead TOAST chunks**: 1.4-2.2 GB (example: 1.44 GB, 77%)
+- **Free space**: 10-430 MB (example: 426 MB, 23%)
+- **Bloat amplification**: 5,000-6,500x (example: 5,400x)
+- **After VACUUM FULL**: ~400 KB (99.98% space reclaimed)
 - **Autovacuum runs**: 1 trigger at ~15 seconds
 
-**Critical Finding**: `pgstattuple` reveals that **77% of the TOAST table is dead tuples**, invisible to `pg_stat_user_tables`. Despite autovacuum running once, it **failed to prevent catastrophic bloat accumulation**.
+**Critical Finding**: `pgstattuple` reveals that **77-99% of the TOAST table is dead tuples**, invisible to `pg_stat_user_tables`. Despite autovacuum running once, it **failed to prevent catastrophic bloat accumulation**.
 
 **Why Autovacuum Failed**:
 
@@ -34,10 +34,10 @@ Tests demonstrate significant performance degradation and storage bloat when upd
    - Autovacuum triggers based on row-level stats, not data volume
 
 2. **Single autovacuum run was insufficient**
-   - First run at ~15s when table was already 572 MB
-   - Bloat continued growing: 572 MB → 1.87 GB despite autovacuum having run
+   - First run at ~15s when table was already 500-600 MB
+   - Bloat continued growing to 1.8-2.2 GB despite autovacuum having run
    - Regular VACUUM marked space as free but couldn't shrink the file
-   - Free space (23% of table) wasn't efficiently reused due to TOAST chunk append behavior
+   - Free space (0.5-23% of table) wasn't efficiently reused due to TOAST chunk append behavior
 
 3. **Default thresholds ignore TOAST-heavy workloads**
    - For a 1-row table: `autovacuum_vacuum_threshold (50) + autovacuum_vacuum_scale_factor (0.2) * 1 = 50` dead tuples needed
@@ -47,10 +47,10 @@ Tests demonstrate significant performance degradation and storage bloat when upd
 **Conclusion**: **Autovacuum's design is fundamentally incompatible with high-frequency updates to large JSONB documents.** The triggering mechanism cannot detect TOAST bloat, and even when triggered, regular VACUUM cannot reclaim the wasted space without `VACUUM FULL` (which locks tables).
 
 ### Update Throughput Impact (Scenario 3)
-- **Small JSONB** (~100 bytes): 3,256 updates/sec
-- **Large JSONB** (~50KB): 316 updates/sec
-- **Performance Penalty**: 10.3x slower for large documents
-- **Latency Impact**: 10.3x higher (0.31ms vs 3.16ms)
+- **Small JSONB** (~100 bytes): 1,800-3,300 updates/sec (example run: 3,256 updates/sec)
+- **Large JSONB** (~50KB): 110-320 updates/sec (example run: 316 updates/sec)
+- **Performance Penalty**: 10-16x slower for large documents (example: 10.3x)
+- **Latency Impact**: 10-16x higher (example: 0.31ms vs 3.16ms)
 
 ---
 
@@ -66,8 +66,8 @@ PostgreSQL's autovacuum system has a **critical blind spot** for TOAST-stored da
    - Main table shows only 1 dead row per update, masking the 80 KB of TOAST bloat
 
 2. **Why standard monitoring fails**:
-   - `pg_stat_user_tables.n_dead_tup` = 0 for TOAST tables (despite 1.44 GB of dead tuples!)
-   - `pgstattuple` reveals the truth: 77% dead tuples + 23% free space = 99.5% bloat
+   - `pg_stat_user_tables.n_dead_tup` = 0 for TOAST tables (despite 1.4-2.2 GB of dead tuples!)
+   - `pgstattuple` reveals the truth: 77-99% dead tuples + 0.5-23% free space = 99%+ bloat
    - Autovacuum thresholds based on tuple count, not storage volume
    - No visibility into TOAST bloat without running `pgstattuple` or `VACUUM FULL`
 
@@ -82,10 +82,10 @@ PostgreSQL's autovacuum system has a **critical blind spot** for TOAST-stored da
      - Returns all freed space to the OS
      - Requires exclusive table lock (blocks all operations)
    - **Why regular VACUUM failed in this test**:
-     - Autovacuum ran and marked 1.44 GB as "free space"
+     - Autovacuum ran and marked 1.4-2.2 GB as "free space"
      - But with a single-row workload, PostgreSQL kept appending new TOAST chunks to the end
      - Free space in the middle couldn't be reused efficiently
-     - Result: 77% dead tuples + 23% fragmented free space = 99.5% bloat
+     - Result: 77-99% dead tuples + 0.5-23% fragmented free space = 99%+ bloat
      - Only `VACUUM FULL` could reclaim this by rewriting the entire table
 
 ### Implications for Production Systems
@@ -95,7 +95,7 @@ For applications with:
 - Frequent partial updates (e.g., updating metadata fields)
 - Low row counts (1-1000s of rows)
 
-**Default autovacuum configuration will cause runaway storage bloat**, accumulating at ~31 MB/second in our test (1.87 GB / 60s), with a bloat amplification of **5,400x** (table is 5,400 times larger than actual data).
+**Default autovacuum configuration will cause runaway storage bloat**, accumulating at ~30-35 MB/second (example: 31 MB/s), with a bloat amplification of **5,000-6,500x** (table grows to be thousands of times larger than actual data).
 
 ---
 
