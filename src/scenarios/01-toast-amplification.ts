@@ -3,7 +3,7 @@ import { generateLargeJsonb, getUpdateTimestampQuery } from "../fixtures";
 import { getToastSize, formatBytes } from "../metrics";
 
 export async function run() {
-  console.log("\n=== Scenario 2: TOAST Write Amplification ===\n");
+  console.log("\n=== Scenario 1: TOAST Write Amplification ===\n");
 
   const tableName = "toast_amplification_test";
   await resetTable(tableName);

@@ -3,7 +3,7 @@ import { generateSmallJsonb, generateLargeJsonb, getUpdateTimestampQuery } from 
 import { formatNumber } from "../metrics";
 
 export async function run() {
-  console.log("\n=== Scenario 5: Update Throughput Comparison ===\n");
+  console.log("\n=== Scenario 4: Update Throughput Comparison ===\n");
 
   const durationSeconds = 60;
 

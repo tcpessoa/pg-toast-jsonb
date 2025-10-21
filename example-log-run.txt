@@ -1,0 +1,88 @@
+❯ bun start
+$ bun src/main.ts
+PostgreSQL JSONB Update Performance Test Suite
+===============================================
+
+
+=== Scenario 1: HOT Updates Prevention ===
+
+Testing small JSONB (~100 bytes)...
+  Total updates: 8,585
+  HOT updates: 8,585
+  HOT ratio: 100.00%
+
+Testing large JSONB (~50KB)...
+  Total updates: 9,854
+  HOT updates: 9,854
+  HOT ratio: 100.00%
+
+=== Scenario 2: TOAST Write Amplification ===
+
+  TOAST table: pg_toast_26411
+  Updates performed: 100
+  Bytes actually changed per update: ~25 bytes
+  Total TOAST growth: 7.91 MB
+  Average TOAST growth per update: 80.96 KB
+  Write amplification factor: 3316.12x
+
+=== Scenario 3: Dead Tuple Accumulation ===
+
+  Performing 10,000 updates with autovacuum disabled...
+    2000 updates: 122 dead tuples
+    4000 updates: 21 dead tuples
+    6000 updates: 14 dead tuples
+    8000 updates: 7 dead tuples
+    10000 updates: 72 dead tuples
+
+  Final statistics:
+    Live tuples: 1
+    Dead tuples: 72
+    Bloat ratio: 72.00:1 (72 dead / 1 live)
+    Table growth: 790.16 MB
+    Total table size: 790.30 MB
+
+=== Scenario 4: Autovacuum Effectiveness ===
+
+  Running updates for 60 seconds with autovacuum enabled...
+  Sampling metrics every 5 seconds...
+
+  [5s] Dead tuples: 62, Table size: 86.81 MB, Autovacuum runs: 0
+  [10s] Dead tuples: 54, Table size: 172.70 MB, Autovacuum runs: 0
+  [15s] Dead tuples: 25, Table size: 256.45 MB, Autovacuum runs: 0
+  [20s] Dead tuples: 55, Table size: 336.04 MB, Autovacuum runs: 0
+  [25s] Dead tuples: 104, Table size: 417.18 MB, Autovacuum runs: 0
+  [30s] Dead tuples: 100, Table size: 503.55 MB, Autovacuum runs: 0
+  [35s] Dead tuples: 88, Table size: 589.28 MB, Autovacuum runs: 0
+  [40s] Dead tuples: 133, Table size: 672.01 MB, Autovacuum runs: 0
+  [45s] Dead tuples: 95, Table size: 745.59 MB, Autovacuum runs: 0
+  [50s] Dead tuples: 208, Table size: 822.70 MB, Autovacuum runs: 0
+  [55s] Dead tuples: 194, Table size: 898.41 MB, Autovacuum runs: 0
+
+  Summary:
+    Total updates: 12,339
+    Updates per second: 205.65
+    Peak dead tuples: 208
+    Final dead tuples: 204
+    Autovacuum runs: 0
+    Final table size: 898.41 MB
+
+=== Scenario 5: Update Throughput Comparison ===
+
+Testing small JSONB (~100 bytes)...
+  Updates completed: 107,465
+  Duration: 60.00s
+  Throughput: 1791.05 updates/sec
+  Avg latency: 0.56ms
+
+Testing large JSONB (~50KB)...
+  Updates completed: 12,419
+  Duration: 60.00s
+  Throughput: 206.98 updates/sec
+  Avg latency: 4.83ms
+
+  Comparison:
+    Small JSONB is 8.65x faster
+    Large JSONB has 8.66x higher latency
+
+
+=== All Tests Complete ===

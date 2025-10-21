@@ -12,7 +12,7 @@ export async function query<T = any>(text: string, params?: any[]): Promise<T[]>
   return await sql.unsafe(text) as T[];
 }
 
-export async function resetTable(tableName: string) {
+export async function resetTable(tableName: string, createIndex: boolean = false) {
   await sql`DROP TABLE IF EXISTS ${sql(tableName)} CASCADE`;
   await sql`
     CREATE TABLE ${sql(tableName)} (
@@ -22,6 +22,10 @@ export async function resetTable(tableName: string) {
     )
   `;
   await sql`INSERT INTO ${sql(tableName)} (data) VALUES ('{"updatedAt": ""}'::jsonb)`;
+
+  if (createIndex) {
+    await sql.unsafe(`CREATE INDEX idx_${tableName}_id ON ${tableName}(id)`);
+  }
 }
 
 export async function disableAutovacuum(tableName: string) {
