@@ -24,4 +24,6 @@ bun install
 bun start
 ```
 
-It can take up to 5mins.
+It can take up to 5mins. Check what a run looks like at [logs](./example-log-run.txt)
+
+Supports article: https://blog-tcpessoa.vercel.app/blog/postgres-toast-jsonb
