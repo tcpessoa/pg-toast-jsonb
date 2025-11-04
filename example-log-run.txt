@@ -1,0 +1,82 @@
+$ bun src/main.ts
+PostgreSQL JSONB Update Performance Test Suite
+===============================================
+
+
+=== Scenario 1: TOAST Write Amplification ===
+
+  TOAST table: pg_toast_129524
+  Updates performed: 100
+  Bytes actually changed per update: ~25 bytes
+  Total TOAST growth: 35.17 MB
+  Average TOAST growth per update: 360.16 KB
+  Write amplification factor: 14752.15x
+
+=== Scenario 2: Autovacuum Effectiveness ===
+
+  Running updates for 60 seconds with autovacuum enabled...
+  Sampling metrics every 5 seconds...
+
+  [5s] Main: 40 dead (117.89 MB), TOAST: 0 dead (117.84 MB), AV runs: 1/0
+  [10s] Main: 88 dead (307.44 MB), TOAST: 0 dead (307.38 MB), AV runs: 1/0
+  [15s] Main: 54 dead (509.30 MB), TOAST: 0 dead (509.24 MB), AV runs: 1/0
+  [20s] Main: 105 dead (696.73 MB), TOAST: 0 dead (696.68 MB), AV runs: 1/0
+  [25s] Main: 41 dead (888.38 MB), TOAST: 0 dead (888.33 MB), AV runs: 1/0
+  [30s] Main: 128 dead (1.06 GB), TOAST: 0 dead (1.06 GB), AV runs: 1/0
+  [35s] Main: 87 dead (1.26 GB), TOAST: 0 dead (1.26 GB), AV runs: 1/0
+  [40s] Main: 44 dead (1.45 GB), TOAST: 0 dead (1.45 GB), AV runs: 1/0
+  [45s] Main: 74 dead (1.63 GB), TOAST: 0 dead (1.63 GB), AV runs: 1/0
+  [50s] Main: 36 dead (1.82 GB), TOAST: 0 dead (1.82 GB), AV runs: 1/0
+  [55s] Main: 104 dead (2.01 GB), TOAST: 0 dead (2.01 GB), AV runs: 1/0
+
+  Summary:
+    Total updates: 6,589
+    Updates per second: 109.82
+
+  Main Table:
+    Peak dead tuples: 128
+    Final dead tuples: 45
+    Autovacuum runs: 1
+    Final size: 2.01 GB
+
+  TOAST Table:
+    Peak dead tuples: 0
+    Final dead tuples: 0
+    Autovacuum runs: 0
+    Final size: 2.01 GB
+
+  TOAST Bloat Analysis (pgstattuple):
+    TOAST table name: pg_toast.pg_toast_129635
+    Total table size: 2.17 GB
+    Live data: 353.92 KB (0.02%)
+    Dead tuples: 2.15 GB (98.97%)
+    Free space: 10.46 MB (0.47%)
+    Total wasted: 204.91 undefined (9897455802.69%)
+    Bloat amplification: 6431.8x
+
+  Testing VACUUM FULL effectiveness:
+    Size before VACUUM FULL: 2.20 GB
+    Size after VACUUM FULL: 400.00 KB
+    Space reclaimed: 2.20 GB (99.98%)
+    Conclusion: Significant bloat present despite autovacuum
+
+=== Scenario 3: Update Throughput Comparison ===
+
+Testing small JSONB (~100 bytes)...
+  Updates completed: 110,327
+  Duration: 60.00s
+  Throughput: 1838.78 updates/sec
+  Avg latency: 0.54ms
+
+Testing large JSONB (~50KB)...
+  Updates completed: 6,734
+  Duration: 60.00s
+  Throughput: 112.23 updates/sec
+  Avg latency: 8.91ms
+
+  Comparison:
+    Small JSONB is 16.38x faster
+    Large JSONB has 16.39x higher latency
+
+
+=== All Tests Complete ===

@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:13
+    image: postgres:16.4-alpine
     environment:
       POSTGRES_DB: jsonb_test
       POSTGRES_USER: testuser
